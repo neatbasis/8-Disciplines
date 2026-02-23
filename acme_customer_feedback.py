@@ -129,7 +129,8 @@ try:
         else:
             defaults = {
                 "name": "",
-                "phone": "",
+                "phone_number": "",
+                "email": "",
                 "feedback": "",
                 "what_happened": "",
                 "when_happened": "",
@@ -146,6 +147,9 @@ try:
     def customer_service_chatbot():
         # Load default values
         defaults = load_defaults()
+        feedback = ""
+        issue = get_issue(defaults)
+
         # Personalized interactions
         if args.use_defaults:
             feedback = "yes"
