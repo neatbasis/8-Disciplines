@@ -1,6 +1,6 @@
 import unittest
 
-from survey_tools import get_input, prompt_yn
+from eight_disciplines.survey_tools import get_input, prompt_yn
 
 
 class TestPrompts(unittest.TestCase):

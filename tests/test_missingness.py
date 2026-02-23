@@ -1,7 +1,7 @@
 import unittest
 
-from reportgenerator import ReportGenerator, is_issue_complete
-from survey_tools import CustomerIssue
+from eight_disciplines.reportgenerator import ReportGenerator, is_issue_complete
+from eight_disciplines.survey_tools import CustomerIssue
 
 
 class TestMissingness(unittest.TestCase):
