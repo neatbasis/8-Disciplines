@@ -1,4 +1,4 @@
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from typing import Any, Callable, Optional
 
 
@@ -11,6 +11,27 @@ def _normalize_optional(value: Any) -> Optional[str]:
 
 def _has_value(value: Any) -> bool:
     return _normalize_optional(value) is not None
+
+
+def _normalize_optional_list(value: Any) -> Optional[list[str]]:
+    if value is None:
+        return None
+    if isinstance(value, list):
+        normalized = [_normalize_optional(item) for item in value]
+        result = [item for item in normalized if item is not None]
+        return result or None
+
+    text = _normalize_optional(value)
+    if text is None:
+        return None
+
+    parts = [part.strip() for part in text.split(',')]
+    result = [part for part in parts if part]
+    return result or None
+
+
+def _has_list_value(value: Any) -> bool:
+    return _normalize_optional_list(value) is not None
 
 
 @dataclass
@@ -63,6 +84,37 @@ class CustomerIssue:
 
     def to_dict(self) -> dict:
         return asdict(self)
+
+
+@dataclass
+class EightDisciplineInputs:
+    plan: Optional[str] = None
+    prerequisites: Optional[str] = None
+    team: Optional[list[str]] = field(default=None)
+    problem_description: Optional[str] = None
+    interim_containment_plan: Optional[str] = None
+    root_causes: Optional[str] = None
+    permanent_corrections: Optional[str] = None
+    corrective_actions: Optional[str] = None
+    preventive_measures: Optional[str] = None
+
+    @staticmethod
+    def from_defaults(defaults: dict) -> "EightDisciplineInputs":
+        return EightDisciplineInputs(
+            plan=_normalize_optional(defaults.get('plan')),
+            prerequisites=_normalize_optional(defaults.get('prerequisites')),
+            team=_normalize_optional_list(defaults.get('team')),
+            problem_description=_normalize_optional(defaults.get('problem_description')),
+            interim_containment_plan=_normalize_optional(defaults.get('interim_containment_plan')),
+            root_causes=_normalize_optional(defaults.get('root_causes')),
+            permanent_corrections=_normalize_optional(defaults.get('permanent_corrections')),
+            corrective_actions=_normalize_optional(defaults.get('corrective_actions')),
+            preventive_measures=_normalize_optional(defaults.get('preventive_measures')),
+        )
+
+    def to_defaults(self, defaults: dict) -> dict:
+        defaults.update(asdict(self))
+        return defaults
 
 
 def prompt_for_rating(input_fn: Callable[[str], str] = input, print_fn: Callable[[str], None] = print) -> Optional[int]:
@@ -146,6 +198,46 @@ def get_input(
     return defaults
 
 
+def get_list_input(
+    key: str,
+    label: str,
+    defaults: Optional[dict] = None,
+    *,
+    allow_skip: bool = False,
+    input_fn: Callable[[str], str] = input,
+    print_fn: Callable[[str], None] = print,
+):
+    if defaults is None:
+        defaults = {}
+
+    current = defaults.get(key)
+    if not _has_list_value(current):
+        response = prompt_text(
+            f"Please enter {label} (comma-separated)",
+            allow_skip=allow_skip,
+            input_fn=input_fn,
+        )
+        defaults[key] = _normalize_optional_list(response)
+        return defaults
+
+    current_display = ', '.join(_normalize_optional_list(current) or [])
+    is_correct = prompt_yn(
+        f"Your {label} are {current_display}. Is this correct?",
+        default=True,
+        input_fn=input_fn,
+        print_fn=print_fn,
+    )
+    if not is_correct:
+        response = prompt_text(
+            f"What are the {label} (comma-separated)",
+            allow_skip=allow_skip,
+            input_fn=input_fn,
+        )
+        defaults[key] = _normalize_optional_list(response)
+
+    return defaults
+
+
 def get_customer_contact(defaults, *, input_fn: Callable[[str], str] = input, print_fn: Callable[[str], None] = print):
     contact = CustomerContact.from_defaults(defaults)
     contact_defaults = asdict(contact)
@@ -163,6 +255,32 @@ def get_customer_contact(defaults, *, input_fn: Callable[[str], str] = input, pr
 
 def get_issue(defaults):
     return CustomerIssue.from_defaults(defaults).to_dict()
+
+
+def get_eight_disciplines_inputs(
+    defaults,
+    *,
+    interactive: bool = True,
+    input_fn: Callable[[str], str] = input,
+    print_fn: Callable[[str], None] = print,
+):
+    model = EightDisciplineInputs.from_defaults(defaults)
+    if not interactive:
+        return model.to_defaults(defaults), model
+
+    eight_d_defaults = asdict(model)
+    eight_d_defaults = get_input('plan', 'plan to solve the problem', eight_d_defaults, allow_skip=True, input_fn=input_fn, print_fn=print_fn)
+    eight_d_defaults = get_input('prerequisites', 'prerequisites for the plan', eight_d_defaults, allow_skip=True, input_fn=input_fn, print_fn=print_fn)
+    eight_d_defaults = get_list_input('team', 'team members', eight_d_defaults, allow_skip=True, input_fn=input_fn, print_fn=print_fn)
+    eight_d_defaults = get_input('problem_description', 'problem description', eight_d_defaults, allow_skip=True, input_fn=input_fn, print_fn=print_fn)
+    eight_d_defaults = get_input('interim_containment_plan', 'interim containment plan', eight_d_defaults, allow_skip=True, input_fn=input_fn, print_fn=print_fn)
+    eight_d_defaults = get_input('root_causes', 'root causes', eight_d_defaults, allow_skip=True, input_fn=input_fn, print_fn=print_fn)
+    eight_d_defaults = get_input('permanent_corrections', 'permanent corrections', eight_d_defaults, allow_skip=True, input_fn=input_fn, print_fn=print_fn)
+    eight_d_defaults = get_input('corrective_actions', 'corrective actions', eight_d_defaults, allow_skip=True, input_fn=input_fn, print_fn=print_fn)
+    eight_d_defaults = get_input('preventive_measures', 'preventive measures', eight_d_defaults, allow_skip=True, input_fn=input_fn, print_fn=print_fn)
+
+    model = EightDisciplineInputs(**eight_d_defaults)
+    return model.to_defaults(defaults), model
 
 
 def get_customer_feedback(defaults, *, input_fn: Callable[[str], str] = input, print_fn: Callable[[str], None] = print):
