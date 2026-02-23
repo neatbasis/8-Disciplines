@@ -1,6 +1,6 @@
 import unittest
 
-from acme_customer_feedback import compute_workflow_status, step_prereqs
+from eight_disciplines.acme_customer_feedback import compute_workflow_status, step_prereqs
 
 
 class TestWorkflowGating(unittest.TestCase):

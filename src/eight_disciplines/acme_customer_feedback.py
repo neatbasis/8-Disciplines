@@ -7,8 +7,8 @@ import sys
 from datetime import datetime, timezone
 from typing import Dict, Optional
 
-from reportgenerator import ReportGenerator, is_issue_complete
-from survey_tools import (
+from eight_disciplines.reportgenerator import ReportGenerator, is_issue_complete
+from eight_disciplines.survey_tools import (
     CustomerFeedback,
     get_customer_contact,
     get_customer_feedback,

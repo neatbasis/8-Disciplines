@@ -6,8 +6,8 @@ import unittest
 from argparse import Namespace
 from contextlib import redirect_stdout
 
-from acme_customer_feedback import customer_service_chatbot, log_feedback
-from survey_tools import CustomerFeedback
+from eight_disciplines.acme_customer_feedback import customer_service_chatbot, log_feedback
+from eight_disciplines.survey_tools import CustomerFeedback
 
 
 class TestFeedbackLogging(unittest.TestCase):
