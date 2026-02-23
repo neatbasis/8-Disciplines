@@ -179,8 +179,8 @@ def get_customer_feedback(defaults, *, input_fn: Callable[[str], str] = input, p
     print_fn('Thanks — please provide a bit more detail. You can skip optional questions.\n')
     issue_defaults = asdict(CustomerIssue.from_defaults(defaults))
     issue_defaults = get_input('what_happened', 'What happened', issue_defaults, input_fn=input_fn, print_fn=print_fn)
-    issue_defaults = get_input('when_happened', 'When did it happen', issue_defaults, allow_skip=True, input_fn=input_fn, print_fn=print_fn)
-    issue_defaults = get_input('where_happened', 'Where did it happen', issue_defaults, allow_skip=True, input_fn=input_fn, print_fn=print_fn)
+    issue_defaults = get_input('when_happened', 'When did it happen', issue_defaults, allow_skip=False, input_fn=input_fn, print_fn=print_fn)
+    issue_defaults = get_input('where_happened', 'Where did it happen', issue_defaults, allow_skip=False, input_fn=input_fn, print_fn=print_fn)
     issue_defaults = get_input('expecting_to_happen', 'What were you expecting to happen', issue_defaults, input_fn=input_fn, print_fn=print_fn)
     issue_defaults = get_input('resolution_request', 'What would you like us to do to resolve the issue', issue_defaults, allow_skip=True, input_fn=input_fn, print_fn=print_fn)
 
