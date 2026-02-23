@@ -59,6 +59,33 @@ class TestMissingness(unittest.TestCase):
         self.assertNotIn('issue', missing2)
         self.assertIn('issue', done2)
 
+    def test_scrum_report_empty_progress_replaces_placeholder_with_guidance(self):
+        report = {
+            'issue': CustomerIssue().to_dict(),
+            'plan': None,
+            'prerequisites': None,
+            'team': None,
+            'problem_description': None,
+            'interim_containment_plan': None,
+            'root_causes': None,
+            'permanent_corrections': None,
+            'corrective_actions': None,
+            'preventive_measures': None,
+        }
+
+        scrum_report = ReportGenerator(report).scrum_report()
+
+        self.assertIn("We haven't completed any steps yet. Let's get started with these first steps:", scrum_report)
+        self.assertNotIn("[insert instructions here]", scrum_report)
+        self.assertIn(
+            "We need to address the issue gifted to us by our dear customer.",
+            scrum_report,
+        )
+        self.assertIn(
+            "Definition of complete: The issue has been acknowledged",
+            scrum_report,
+        )
+
 
 if __name__ == '__main__':
     unittest.main()
