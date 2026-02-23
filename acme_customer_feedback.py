@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 import argparse
+from dataclasses import asdict
 import json
 import os
 import sys
+from datetime import datetime, timezone
 from typing import Dict, Optional
 
 from reportgenerator import ReportGenerator, is_issue_complete
@@ -199,6 +201,10 @@ def customer_service_chatbot(args):
         # "feedback_submitted" is derived strictly from stored issue completeness.
         feedback_submitted = _has_issue_details(issue)
 
+    if feedback_submitted:
+        issue_blob = json.dumps(issue, sort_keys=True)
+        log_feedback(CustomerFeedback(feedback=issue_blob, rating=None))
+
     save_defaults(defaults, args.defaults_file)
 
     eight_d = EightDisciplines(issue)
@@ -258,7 +264,14 @@ def customer_service_chatbot(args):
 
 
 def log_feedback(feedback: CustomerFeedback):
-    pass
+    log_path = os.getenv('ACME_FEEDBACK_LOG', 'feedback_events.jsonl')
+    payload = {
+        'timestamp': datetime.now(timezone.utc).isoformat(),
+        'event': 'customer_feedback_submitted',
+        'feedback': asdict(feedback),
+    }
+    with open(log_path, 'a', encoding='utf-8') as log_file:
+        log_file.write(json.dumps(payload, sort_keys=True) + '\n')
 
 
 def main():
