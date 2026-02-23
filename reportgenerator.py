@@ -1,8 +1,12 @@
-from typing import List
 import textwrap
-import time
 
-from rich.progress import Progress
+def _is_missing(value):
+    if value is None:
+        return True
+    if isinstance(value, dict):
+        return all(_is_missing(v) for v in value.values())
+    return False
+
 
 class ReportGenerator:
     def __init__(self, report):
@@ -81,19 +85,11 @@ class ReportGenerator:
         return congratulatory_message
     @staticmethod
     def check_empty_values(report):
-        empty_values = []
-        for key, value in report.items():
-            if not value:
-                empty_values.append(key)
-        return empty_values
+        return [key for key, value in report.items() if _is_missing(value)]
 
     @staticmethod
     def check_nonempty_values(report):
-        nonempty_values = set()
-        for key, value in report.items():
-            if value:
-                nonempty_values.add(key)
-        return nonempty_values
+        return {key for key, value in report.items() if not _is_missing(value)}
         
     @staticmethod
     def get_issue_text(issue):
@@ -118,23 +114,12 @@ class ReportGenerator:
             return "Unknown"
         
     def _check_empty_values(self, report):
-        """
-        Check which steps have empty values in the report.
-        """
-        empty = set()
-        for key, value in report.items():
-            if value is None:
-                empty.add(key)
-        return empty
+        return set(self.check_empty_values(report))
 
     def _check_nonempty_values(self, report):
-        """
-        Check which steps have non-empty values in the report.
-        """
         all_steps = set(self.phrases.keys())
-        empty = self._check_empty_values(report)
-        done = all_steps.intersection(report.keys()) - empty
-        return done
+        nonempty = set(self.check_nonempty_values(report))
+        return all_steps.intersection(nonempty)
         
     def scrum_report(self):
         #with Progress() as progress:
