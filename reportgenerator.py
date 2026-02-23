@@ -203,7 +203,12 @@ class ReportGenerator:
                 else:
                     report_string += f"       - {detail}\n"
         else:
-            report_string += "\nWe haven't completed any steps yet. [insert instructions here]\n"
+            report_string += "\nWe haven't completed any steps yet. Let's get started with these first steps:\n\n"
+            for d in missing_descriptions:
+                todo = self.phrases[d]['todo']
+                definition_complete = self.phrases[d]['definition_complete']
+                report_string += f"    - We need to {todo}.\n"
+                report_string += f"       - Definition of complete: {definition_complete}\n"
         if missing_descriptions:
             report_string += "\nLet's focus on completing the missing steps. Here's a quick reminder of what we need to do:\n\n"
             for d in missing_descriptions:
