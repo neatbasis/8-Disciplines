@@ -8,7 +8,13 @@ from datetime import datetime, timezone
 from typing import Dict, Optional
 
 from reportgenerator import ReportGenerator, is_issue_complete
-from survey_tools import CustomerFeedback, get_customer_contact, get_customer_feedback, get_issue
+from survey_tools import (
+    CustomerFeedback,
+    get_customer_contact,
+    get_customer_feedback,
+    get_eight_disciplines_inputs,
+    get_issue,
+)
 
 
 class EightDisciplines:
@@ -119,6 +125,15 @@ def load_defaults(defaults_file):
             'where_happened': None,
             'expecting_to_happen': None,
             'resolution_request': None,
+            'plan': None,
+            'prerequisites': None,
+            'team': None,
+            'problem_description': None,
+            'interim_containment_plan': None,
+            'root_causes': None,
+            'permanent_corrections': None,
+            'corrective_actions': None,
+            'preventive_measures': None,
         }
     return defaults
 
@@ -196,10 +211,12 @@ def customer_service_chatbot(args):
         defaults = get_customer_contact(defaults)
         print('How can we help you today?')
         defaults, feedback_submitted, issue = get_customer_feedback(defaults)
+        defaults, eight_d_data = get_eight_disciplines_inputs(defaults, interactive=True)
     else:
         # Non-interactive OR explicitly using defaults: never prompt.
         # "feedback_submitted" is derived strictly from stored issue completeness.
         feedback_submitted = _has_issue_details(issue)
+        defaults, eight_d_data = get_eight_disciplines_inputs(defaults, interactive=False)
 
     if feedback_submitted:
         issue_blob = json.dumps(issue, sort_keys=True)
@@ -208,6 +225,14 @@ def customer_service_chatbot(args):
     save_defaults(defaults, args.defaults_file)
 
     eight_d = EightDisciplines(issue)
+    eight_d.plan_solving_problem(eight_d_data.plan, eight_d_data.prerequisites)
+    eight_d.use_team(eight_d_data.team)
+    eight_d.define_problem(eight_d_data.problem_description)
+    eight_d.develop_interim_containment_plan(eight_d_data.interim_containment_plan)
+    eight_d.determine_root_causes(eight_d_data.root_causes)
+    eight_d.choose_permanent_corrections(eight_d_data.permanent_corrections)
+    eight_d.implement_corrective_actions(eight_d_data.corrective_actions)
+    eight_d.take_preventive_measures(eight_d_data.preventive_measures)
     report = eight_d.generate_machine_readable_report()
 
     order = step_order(eight_d)

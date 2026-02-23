@@ -87,5 +87,43 @@ class TestMissingness(unittest.TestCase):
         )
 
 
+class TestEightDisciplineDefaults(unittest.TestCase):
+    def test_complete_defaults_make_all_eight_d_steps_non_missing(self):
+        report = {
+            'issue': {
+                'what_happened': 'x',
+                'when_happened': 'now',
+                'where_happened': 'here',
+                'expecting_to_happen': 'should work',
+                'resolution_request': 'fix',
+            },
+            'plan': 'Plan the work',
+            'prerequisites': 'Gather logs',
+            'team': ['Alex', 'Blake'],
+            'problem_description': 'Intermittent service outage for VIP customers.',
+            'interim_containment_plan': 'Route traffic to standby region.',
+            'root_causes': 'Connection pool exhaustion after deploy.',
+            'permanent_corrections': 'Tune pools and add backpressure.',
+            'corrective_actions': 'Deploy tuned config and monitor.',
+            'preventive_measures': 'Add load tests and release guardrails.',
+        }
+
+        missing = ReportGenerator.check_empty_values(report)
+
+        for step in [
+            'issue',
+            'plan',
+            'prerequisites',
+            'team',
+            'problem_description',
+            'interim_containment_plan',
+            'root_causes',
+            'permanent_corrections',
+            'corrective_actions',
+            'preventive_measures',
+        ]:
+            self.assertNotIn(step, missing)
+
+
 if __name__ == '__main__':
     unittest.main()
