@@ -5,8 +5,9 @@ import os
 import sys
 from typing import Dict, Optional
 
-from reportgenerator import ReportGenerator
+from reportgenerator import ReportGenerator, is_issue_complete
 from survey_tools import CustomerFeedback, get_customer_contact, get_customer_feedback, get_issue
+
 
 class EightDisciplines:
     def __init__(self, issue):
@@ -125,8 +126,60 @@ def save_defaults(defaults, defaults_file):
         json.dump(defaults, file)
 
 
-def _has_issue_details(issue):
-    return any(value is not None for value in issue.values())
+def _has_issue_details(issue: Dict[str, Optional[str]]) -> bool:
+    # Strict: issue is "submitted" only if it satisfies required completeness.
+    return is_issue_complete(issue)
+
+
+def step_order(eight_d: EightDisciplines) -> list[str]:
+    return ['issue'] + list(eight_d.EIGHT_DISCIPLINES)
+
+
+def step_prereqs() -> Dict[str, list[str]]:
+    # Minimal, sensible gating. Adjust as you evolve your definition-of-ready.
+    return {
+        'issue': ['issue'],
+        'team': ['issue'],
+        'problem_description': ['issue', 'team'],
+        'interim_containment_plan': ['problem_description'],
+        'root_causes': ['problem_description', 'interim_containment_plan'],
+        'permanent_corrections': ['root_causes'],
+        'corrective_actions': ['permanent_corrections'],
+        'preventive_measures': ['corrective_actions'],
+        'plan': ['issue'],
+        'prerequisites': ['plan'],
+    }
+
+
+def ordered(steps: list[str], order: list[str]) -> list[str]:
+    idx = {k: i for i, k in enumerate(order)}
+    return sorted(steps, key=lambda s: idx.get(s, 10**9))
+
+
+def compute_workflow_status(report: Dict[str, object], order: list[str], prereqs: Dict[str, list[str]]):
+    missing = ReportGenerator.check_empty_values(report)
+    done = ReportGenerator.check_nonempty_values(report)
+
+    missing_ord = ordered(missing, order)
+    done_ord = ordered(list(done), order)
+
+    available = []
+    blocked = []
+    for step in missing_ord:
+        reqs = prereqs.get(step, [])
+        if all(r in done for r in reqs):
+            available.append(step)
+        else:
+            blocked.append(step)
+
+    doing = available[0] if available else None
+    return {
+        'done': done_ord,
+        'missing': missing_ord,
+        'available': available,
+        'blocked': blocked,
+        'doing': doing,
+    }
 
 
 def customer_service_chatbot(args):
@@ -137,34 +190,39 @@ def customer_service_chatbot(args):
     env_non_interactive = os.getenv('NON_INTERACTIVE', '0') == '1'
     interactive_mode = not (args.non_interactive or env_non_interactive) and sys.stdin.isatty()
 
-    if args.use_defaults:
-        feedback_submitted = _has_issue_details(issue)
-    elif interactive_mode:
+    if interactive_mode and not args.use_defaults:
         defaults = get_customer_contact(defaults)
         print('How can we help you today?')
         defaults, feedback_submitted, issue = get_customer_feedback(defaults)
     else:
-        print('Running in non-interactive mode without --use-defaults; no new feedback was collected.')
+        # Non-interactive OR explicitly using defaults: never prompt.
+        # "feedback_submitted" is derived strictly from stored issue completeness.
+        feedback_submitted = _has_issue_details(issue)
 
     save_defaults(defaults, args.defaults_file)
 
     eight_d = EightDisciplines(issue)
     report = eight_d.generate_machine_readable_report()
-    missing = ReportGenerator.check_empty_values(report)
-    done = ReportGenerator.check_nonempty_values(report)
+
+    order = step_order(eight_d)
+    prereqs = step_prereqs()
+    status = compute_workflow_status(report, order, prereqs)
 
     if args.format == 'json':
         print(json.dumps({
             'feedback_submitted': feedback_submitted,
             'report': report,
-            'done_steps': sorted(done),
-            'missing_steps': sorted(missing),
+            'done_steps': status['done'],
+            'missing_steps': status['missing'],
+            'available_steps': status['available'],
+            'blocked_steps': status['blocked'],
+            'doing_step': status['doing'],
         }))
         return
 
     print('Thank you for choosing our services. We are committed to providing you with the best experience possible!')
     if not feedback_submitted:
-        print('No feedback submitted.')
+        print('No complete issue submitted (requires what/when/where/expectation).')
         return
 
     print('Your feedback will be used to improve our services and ensure a better experience for all customers.')
@@ -173,16 +231,28 @@ def customer_service_chatbot(args):
     else:
         print(ReportGenerator(report).scrum_report())
 
-    if done:
+    if status['done']:
         print('Done:')
-        for step in sorted(done):
+        for step in status['done']:
             print(f'- {step}')
 
-    if missing:
-        print(f'\nDoing: {sorted(missing)[0]}')
-        print('\nTodo:')
-        for next_step in sorted(missing):
-            print(f'- {next_step}')
+    if status['missing']:
+        if status['doing'] is not None:
+            print(f"\nDoing: {status['doing']}")
+        else:
+            print('\nDoing: (none available — prerequisites missing)')
+
+        print('\nTodo (available next):')
+        for step in status['available']:
+            print(f'- {step}')
+
+        if status['blocked']:
+            print('\nBlocked (missing prerequisites):')
+            done_set = set(status['done'])
+            for step in status['blocked']:
+                reqs = prereqs.get(step, [])
+                missing_reqs = [r for r in reqs if r not in done_set]
+                print(f"- {step} (needs: {', '.join(missing_reqs)})")
     else:
         print(eight_d.congratulate_team())
 
